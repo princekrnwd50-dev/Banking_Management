@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Banking System</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f4f8;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background: #80004d;
+      color: white;
+      text-align: center;
+      padding: 1rem 0;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 20px auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    button {
+      background-color: #004080;
+      color: white;
+      padding: 10px 20px;
+      margin: 5px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #0066cc;
+    }
+
+    input {
+      margin: 5px 0;
+      padding: 8px;
+      width: 100%;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .transaction {
+      border-bottom: 1px solid #ddd;
+      padding: 5px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Smart Banking System</h1>
+  </header>
+
+  <div class="container">
+    <div id="login-section">
+      <h2>Login</h2>
+      <input type="text" id="login-username" placeholder="Username">
+      <input type="password" id="login-password" placeholder="Password">
+      <button onclick="login()">Login</button>
+      <p>Don't have an account? <button onclick="showCreateAccount()">Create Account</button></p>
+    </div>
+
+    <div id="create-section" class="hidden">
+      <h2>Create Account</h2>
+      <input type="text" id="new-username" placeholder="Username">
+      <input type="password" id="new-password" placeholder="Password">
+      <button onclick="createAccount()">Create</button>
+      <button onclick="showLogin()">Back to Login</button>
+    </div>
+
+    <div id="dashboard" class="hidden">
+      <h2 id="welcome"></h2>
+      <button onclick="logout()">Logout</button>
+      <hr>
+
+      <h3>Banking Functions</h3>
+      <button onclick="showDeposit()">Deposit</button>
+      <button onclick="showWithdraw()">Withdraw</button>
+      <button onclick="showTransfer()">Transfer</button>
+      <button onclick="checkBalance()">Check Balance</button>
+      <button onclick="viewTransactions()">View Transactions</button>
+      <button onclick="editProfile()">Edit Profile</button>
+      <button onclick="deleteAccount()">Delete Account</button>
+      <button onclick="viewAllAccounts()">Admin: View All Accounts</button>
+
+      <div id="function-section"></div>
+    </div>
+  </div>
+
+  <script>
+    let currentUser = null;
+
+    function getAccounts() {
+      return JSON.parse(localStorage.getItem('accounts')) || [];
+    }
+
+    function saveAccounts(accounts) {
+      localStorage.setItem('accounts', JSON.stringify(accounts));
+    }
+
+    function showCreateAccount() {
+      document.getElementById('login-section').classList.add('hidden');
+      document.getElementById('create-section').classList.remove('hidden');
+    }
+
+    function showLogin() {
+      document.getElementById('login-section').classList.remove('hidden');
+      document.getElementById('create-section').classList.add('hidden');
+    }
+
+    function createAccount() {
+      const username = document.getElementById('new-username').value;
+      const password = document.getElementById('new-password').value;
+      let accounts = getAccounts();
+
+      if (accounts.find(acc => acc.username === username)) {
+        alert("Username already exists!");
+        return;
+      }
+
+      accounts.push({ username, password, balance: 0, transactions: [] });
+      saveAccounts(accounts);
+      alert("Account created successfully!");
+      showLogin();
+    }
+
+    function login() {
+      const username = document.getElementById('login-username').value;
+      const password = document.getElementById('login-password').value;
+      const accounts = getAccounts();
+      const user = accounts.find(acc => acc.username === username && acc.password === password);
+
+      if (!user) {
+        alert("Invalid credentials!");
+        return;
+      }
+
+      currentUser = user;
+      document.getElementById('welcome').textContent = `Welcome, ${username}`;
+      document.getElementById('login-section').classList.add('hidden');
+      document.getElementById('dashboard').classList.remove('hidden');
+    }
+
+    function logout() {
+      currentUser = null;
+      document.getElementById('dashboard').classList.add('hidden');
+      document.getElementById('login-section').classList.remove('hidden');
+    }
+
+    function showDeposit() {
+      document.getElementById('function-section').innerHTML = `
+        <h3>Deposit</h3>
+        <input type="number" id="deposit-amount" placeholder="Enter amount">
+        <button onclick="deposit()">Confirm</button>
+      `;
+    }
+
+    function deposit() {
+      const amount = parseFloat(document.getElementById('deposit-amount').value);
+      if (amount <= 0) return alert("Invalid amount!");
+      currentUser.balance += amount;
+      currentUser.transactions.push(`Deposited $${amount}`);
+      updateUser();
+      alert(`Deposited $${amount}`);
+    }
+
+    function showWithdraw() {
+      document.getElementById('function-section').innerHTML = `
+        <h3>Withdraw</h3>
+        <input type="number" id="withdraw-amount" placeholder="Enter amount">
+        <button onclick="withdraw()">Confirm</button>
+      `;
+    }
+
+    function withdraw() {
+      const amount = parseFloat(document.getElementById('withdraw-amount').value);
+      if (amount <= 0 || amount > currentUser.balance) return alert("Invalid amount!");
+      currentUser.balance -= amount;
+      currentUser.transactions.push(`Withdrew $${amount}`);
+      updateUser();
+      alert(`Withdrew $${amount}`);
+    }
+
+    function showTransfer() {
+      document.getElementById('function-section').innerHTML = `
+        <h3>Transfer</h3>
+        <input type="text" id="transfer-user" placeholder="Recipient Username">
+        <input type="number" id="transfer-amount" placeholder="Amount">
+        <button onclick="transfer()">Send</button>
+      `;
+    }
+
+    function transfer() {
+      const recipientName = document.getElementById('transfer-user').value;
+      const amount = parseFloat(document.getElementById('transfer-amount').value);
+      let accounts = getAccounts();
+      const recipient = accounts.find(acc => acc.username === recipientName);
+
+      if (!recipient || amount <= 0 || amount > currentUser.balance) {
+        alert("Transfer failed!");
+        return;
+      }
+
+      currentUser.balance -= amount;
+      recipient.balance += amount;
+      currentUser.transactions.push(`Transferred $${amount} to ${recipientName}`);
+      recipient.transactions.push(`Received $${amount} from ${currentUser.username}`);
+      saveAccounts(accounts);
+      alert(`Transferred $${amount} to ${recipientName}`);
+    }
+
+    function checkBalance() {
+      alert(`Your balance: $${currentUser.balance}`);
+    }
+
+    function viewTransactions() {
+      const section = document.getElementById('function-section');
+      section.innerHTML = "<h3>Transaction History</h3>";
+      currentUser.transactions.forEach(t => {
+        const div = document.createElement('div');
+        div.classList.add('transaction');
+        div.textContent = t;
+        section.appendChild(div);
+      });
+    }
+
+    function editProfile() {
+      const newPass = prompt("Enter new password:");
+      if (newPass) {
+        currentUser.password = newPass;
+        updateUser();
+        alert("Password updated!");
+      }
+    }
+
+    function deleteAccount() {
+      if (confirm("Are you sure you want to delete your account?")) {
+        let accounts = getAccounts().filter(acc => acc.username !== currentUser.username);
+        saveAccounts(accounts);
+        alert("Account deleted!");
+        logout();
+      }
+    }
+
+    function viewAllAccounts() {
+      const accounts = getAccounts();
+      const section = document.getElementById('function-section');
+      section.innerHTML = "<h3>All Accounts (Admin View)</h3>";
+      accounts.forEach(acc => {
+        section.innerHTML += `<p>${acc.username} - $${acc.balance}</p>`;
+      });
+    }
+
+    function updateUser() {
+      let accounts = getAccounts();
+      const index = accounts.findIndex(acc => acc.username === currentUser.username);
+      accounts[index] = currentUser;
+      saveAccounts(accounts);
+    }
+  </script>
+</body>
+</html>
